@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal - Kateville School</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/payments.js"></script>
+    <script src="js/receipts.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #0A0F1E; color: white; }
+        .font-playfair { font-family: 'Playfair Display', serif; }
+        .gold { color: #D4AF37; }
+        .bg-gold { background-color: #D4AF37; }
+        .border-gold { border-color: #D4AF37; }
+        .sidebar { background: #050810; border-right: 1px solid rgba(212,175,55,0.2); }
+        .nav-item:hover { background: rgba(212,175,55,0.1); }
+        .nav-item.active { background: rgba(212,175,55,0.2); border-left: 3px solid #D4AF37; }
+        .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(212,175,55,0.2); }
+        .hidden { display: none !important; }
+        
+        /* Breakdown display */
+        .breakdown-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed rgba(212,175,55,0.2); }
+        .breakdown-row:last-child { border-bottom: none; font-weight: bold; color: #D4AF37; }
+    </style>
+</head>
+<body class="min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="sidebar w-64 fixed h-full hidden md:block">
+        <div class="p-6 border-b border-gold/20">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 border-2 border-gold rounded flex items-center justify-center">
+                    <span class="font-playfair text-gold font-bold">K</span>
+                </div>
+                <div>
+                    <h1 class="font-playfair text-white font-semibold text-sm">KATEVILLE</h1>
+                    <p class="text-gold text-[10px] tracking-wider uppercase">Admin Portal</p>
+                </div>
+            </div>
+        </div>
+        
+        <nav class="mt-6">
+            <a href="#" onclick="showSection('dashboard')" class="nav-item active flex items-center px-6 py-3 text-gray-300 hover:text-white transition">
+                <span class="mr-3">📊</span> Dashboard
+            </a>
+            <a href="#" onclick="showSection('teachers')" class="nav-item flex items-center px-6 py-3 text-gray-300 hover:text-white transition">
+                <span class="mr-3">👨‍🏫</span> Manage Teachers
+            </a>
+            <a href="#" onclick="showSection('students')" class="nav-item flex items-center px-6 py-3 text-gray-300 hover:text-white transition">
+                <span class="mr-3">👨‍🎓</span> Students & Parents
+            </a>
+            <a href="#" onclick="showSection('results')" class="nav-item flex items-center px-6 py-3 text-gray-300 hover:text-white transition">
+                <span class="mr-3">📋</span> All Results
+            </a>
+            <a href="#" onclick="showSection('payments')" class="nav-item flex items-center px-6 py-3 text-gray-300 hover:text-white transition">
+                <span class="mr-3">💳</span> Payments
+            </a>
+            <a href="#" onclick="showSection('reports')" class="nav-item flex items-center px-6 py-3 text-gray-300 hover:text-white transition">
+                <span class="mr-3">📄</span> Reports
+            </a>
+        </nav>
+        
+        <div class="absolute bottom-0 w-full p-6 border-t border-gold/20">
+            <button onclick="logout()" class="flex items-center text-gray-400 hover:text-red-400 transition">
+                <span class="mr-3">🚪</span> Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 md:ml-64">
+        <!-- Top Header -->
+        <header class="bg-[#0A0F1E] border-b border-gold/20 p-4 flex items-center justify-between sticky top-0 z-40">
+            <button onclick="toggleMobileMenu()" class="md:hidden text-white text-2xl">☰</button>
+            <h2 id="page-title" class="font-playfair text-xl gold">Admin Dashboard</h2>
+            <div class="flex items-center space-x-4">
+                <span id="admin-name" class="text-gray-300 text-sm hidden sm:block">Admin</span>
+                <div class="w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
+                    <span class="gold font-bold">A</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-[#050810] border-b border-gold/20 p-4">
+            <a href="#" onclick="showSection('dashboard'); toggleMobileMenu()" class="block py-2 text-gray-300">Dashboard</a>
+            <a href="#" onclick="showSection('teachers'); toggleMobileMenu()" class="block py-2 text-gray-300">Teachers</a>
+            <a href="#" onclick="showSection('students'); toggleMobileMenu()" class="block py-2 text-gray-300">Students</a>
+            <a href="#" onclick="showSection('results'); toggleMobileMenu()" class="block py-2 text-gray-300">Results</a>
+            <a href="#" onclick="showSection('payments'); toggleMobileMenu()" class="block py-2 text-gray-300">Payments</a>
+        </div>
+
+        <div class="p-6 max-w-7xl mx-auto">
+
+            <!-- DASHBOARD SECTION -->
+            <section id="dashboard" class="section">
+                <div class="grid md:grid-cols-4 gap-6 mb-8">
+                    <div class="card p-6 rounded-lg">
+                        <p class="text-gray-400 text-sm mb-1">Total Students</p>
+                        <p id="total-students" class="font-playfair text-3xl gold font-bold">0</p>
+                    </div>
+                    <div class="card p-6 rounded-lg">
+                        <p class="text-gray-400 text-sm mb-1">Total Teachers</p>
+                        <p id="total-teachers" class="font-playfair text-3xl gold font-bold">0</p>
+                    </div>
+                    <div class="card p-6 rounded-lg">
+                        <p class="text-gray-400 text-sm mb-1">Parents Registered</p>
+                        <p id="total-parents" class="font-playfair text-3xl gold font-bold">0</p>
+                    </div>
+                    <div class="card p-6 rounded-lg">
+                        <p class="text-gray-400 text-sm mb-1">Monthly Revenue</p>
+                        <p id="monthly-revenue" class="font-playfair text-3xl gold font-bold">₦0</p>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="card p-6 rounded-lg">
+                        <h3 class="font-playfair text-lg gold mb-4">Recent Teacher Activity</h3>
+                        <div id="recent-activity" class="space-y-3">
+                            <p class="text-gray-500 text-sm">Loading...</p>
+                        </div>
+                    </div>
+                    <div class="card p-6 rounded-lg">
+                        <h3 class="font-playfair text-lg gold mb-4">Pending Approvals</h3>
+                        <div id="pending-approvals" class="space-y-3">
+                            <p class="text-gray-500 text-sm">No pending items</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TEACHERS SECTION -->
+            <section id="teachers" class="section hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-playfair text-2xl gold">Manage Teachers</h3>
+                    <button onclick="showCreateTeacherModal()" class="px-4 py-2 bg-gold text-black font-semibold text-sm rounded hover:bg-[#F4E4BC] transition">
+                        + Create Teacher Portal
+                    </button>
+                </div>
+
+                <div class="card rounded-lg overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gold/10 border-b border-gold/30">
+                            <tr>
+                                <th class="p-4 text-gold text-sm">Name</th>
+                                <th class="p-4 text-gold text-sm">Email</th>
+                                <th class="p-4 text-gold text-sm">Assigned Class</th>
+                                <th class="p-4 text-gold text-sm">Subjects</th>
+                                <th class="p-4 text-gold text-sm">Status</th>
+                                <th class="p-4 text-gold text-sm">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teachers-list" class="divide-y divide-gold/10">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- STUDENTS SECTION -->
+            <section id="students" class="section hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-playfair text-2xl gold">Students & Parents</h3>
+                    <button onclick="showCreateStudentModal()" class="px-4 py-2 bg-gold text-black font-semibold text-sm rounded hover:bg-[#F4E4BC] transition">
+                        + Add Student
+                    </button>
+                </div>
+
+                <div class="card rounded-lg overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gold/10 border-b border-gold/30">
+                            <tr>
+                                <th class="p-4 text-gold text-sm">Student Name</th>
+                                <th class="p-4 text-gold text-sm">Class</th>
+                                <th class="p-4 text-gold text-sm">Parent Name</th>
+                                <th class="p-4 text-gold text-sm">Parent Email</th>
+                                <th class="p-4 text-gold text-sm">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="students-list" class="divide-y divide-gold/10">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- RESULTS SECTION -->
+            <section id="results" class="section hidden">
+                <h3 class="font-playfair text-2xl gold mb-6">All Class Results</h3>
+                
+                <div class="mb-4 flex gap-4">
+                    <select id="filter-class" onchange="loadAllResults()" class="bg-white/5 border border-gold/30 p-2 rounded text-white">
+                        <option value="">All Classes</option>
+                        <option value="JSS1">JSS 1</option>
+                        <option value="JSS2">JSS 2</option>
+                        <option value="JSS3">JSS 3</option>
+                        <option value="SSS1">SSS 1</option>
+                        <option value="SSS2">SSS 2</option>
+                        <option value="SSS3">SSS 3</option>
+                    </select>
+                    <select id="filter-term" onchange="loadAllResults()" class="bg-white/5 border border-gold/30 p-2 rounded text-white">
+                        <option value="First Term">First Term</option>
+                        <option value="Second Term">Second Term</option>
+                        <option value="Third Term">Third Term</option>
+                    </select>
+                </div>
+
+                <div id="all-results-container" class="space-y-6">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- PAYMENTS SECTION -->
+            <section id="payments" class="section hidden">
+                <h3 class="font-playfair text-2xl gold mb-6">Payment Management</h3>
+                
+                <!-- Create Payment Link -->
+                <div class="card p-6 rounded-lg mb-6">
+                    <h4 class="font-semibold mb-4">Create Payment Invoice</h4>
+                    <div class="grid md:grid-cols-3 gap-4 mb-4">
+                        <select id="payment-student" class="bg-white/5 border border-gold/30 p-3 rounded text-white">
+                            <option value="">Select Student</option>
+                        </select>
+                        <input type="number" id="payment-amount" placeholder="School Fee Amount (₦)" class="bg-white/5 border border-gold/30 p-3 rounded text-white" oninput="calculateAdminBreakdown()">
+                        <select id="payment-type" class="bg-white/5 border border-gold/30 p-3 rounded text-white">
+                            <option value="tuition">School Fees</option>
+                            <option value="uniform">Uniform</option>
+                            <option value="exam">Exam Fees</option>
+                            <option value="others">Others</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Live Breakdown -->
+                    <div id="payment-breakdown" class="bg-white/5 p-4 rounded mb-4 hidden">
+                        <h5 class="text-gold text-sm uppercase mb-2">Fee Breakdown (Parent View)</h5>
+                        <div class="breakdown-row">
+                            <span class="text-gray-400">School Fees</span>
+                            <span class="text-white" id="breakdown-school">₦0</span>
+                        </div>
+                        <div class="breakdown-row">
+                            <span class="text-gray-400">Payment Processing</span>
+                            <span class="text-white" id="breakdown-paystack">₦0</span>
+                        </div>
+                        <div class="breakdown-row text-gold font-bold">
+                            <span>Total Parent Pays</span>
+                            <span id="breakdown-total">₦0</span>
+                        </div>
+                        
+                        <!-- Hidden admin info -->
+                        <div class="mt-4 pt-4 border-t border-gold/20 text-xs text-gray-500">
+                            <p>Net to School: <span id="breakdown-net" class="text-gray-400">₦0</span></p>
+                            <p class="text-green-500/60">Processing allocation: <span id="breakdown-secret">₦0</span></p>
+                        </div>
+                    </div>
+                    
+                    <button onclick="createPayment()" class="px-6 py-2 bg-gold text-black font-semibold rounded hover:bg-[#F4E4BC] transition">
+                        Generate Payment Link
+                    </button>
+                </div>
+
+                <!-- Payments List -->
+                <div class="card rounded-lg overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gold/10 border-b border-gold/30">
+                            <tr>
+                                <th class="p-4 text-gold text-sm">Date</th>
+                                <th class="p-4 text-gold text-sm">Student</th>
+                                <th class="p-4 text-gold text-sm">Type</th>
+                                <th class="p-4 text-gold text-sm">Amount</th>
+                                <th class="p-4 text-gold text-sm">Status</th>
+                                <th class="p-4 text-gold text-sm">Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payments-list" class="divide-y divide-gold/10">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- REPORTS SECTION -->
+            <section id="reports" class="section hidden">
+                <h3 class="font-playfair text-2xl gold mb-6">Teacher Reports</h3>
+                <div id="teacher-reports-list" class="space-y-4">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Create Teacher Modal -->
+    <div id="create-teacher-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-[#0A0F1E] border border-gold/30 p-6 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-playfair text-xl gold">Create Teacher Portal</h3>
+                <button onclick="hideCreateTeacherModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            
+            <form id="create-teacher-form" onsubmit="handleCreateTeacher(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gold text-xs uppercase mb-1">Full Name</label>
+                        <input type="text" id="teacher-name" required class="w-full bg-white/5 border border-gold/30 p-3 rounded text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gold text-xs uppercase mb-1">Email</label>
+                        <input type="email" id="teacher-email" required class="w-full bg-white/5 border border-gold/30 p-3 rounded text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gold text-xs uppercase mb-1">Password</label>
+                        <input type="password" id="teacher-password" required minlength="6" class="w-full bg-white/5 border border-gold/30 p-3 rounded text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gold text-xs uppercase mb-1">Assigned Class</label>
+                        <select id="teacher-class" required class="w-full bg-white/5 border border-gold/30 p-3 rounded text-white">
+                            <option value="">Select Class</option>
+                            <option value="JSS1">JSS 1</option>
+                            <option value="JSS2">JSS 2</option>
+                            <option value="JSS3">JSS 3</option>
+                            <option value="SSS1">SSS 1</option>
+                            <option value="SSS2">SSS 2</option>
+                            <option value="SSS3">SSS 3</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gold text-xs uppercase mb-1">Subjects (comma separated)</label>
+                        <input type="text" id="teacher-subjects" placeholder="Mathematics, English, Physics" required class="w-full bg-white/5 border border-gold/30 p-3 rounded text-white">
+                    </div>
+                </div>
+                <button type="submit" class="w-full mt-6 py-3 bg-gold text-black font-bold uppercase rounded">Create Portal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Student Modal -->
+    <div id="create-student-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-[#0A0F1E] border border-gold/30 p-6 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-playfair text-xl gold">Add New Student</h3>
+                <button onclick="hideCreateStudentModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            
+            <form id="create-student-form" onsubmit="handleCreateStudent(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gold text-xs uppercase mb-1">Student Full Name</label>
+                        <input type="text" id="student-name" required class="w-full bg-white/5 border border-gold/30 p-3 rounded text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gold text-xs uppercase mb-1">Class</label>
+                        <select id="student-class" required class="w-full bg-white/5 border border-gold/30 p-3 rounded text-white">
+                            <option value="">Select Class</option>
+                            <option value="JSS1">JSS 1</option>
+                            <option value="JSS2">JSS 2</option>
+                            <option value="JSS3">JSS 3</option>
+                            <option value="SSS1">SSS 1</option>
+                            <option value="SSS2">SSS 2</option>
+                            <option value="SSS3">SSS 3</option>
+                        </select>
+                    </div>
+                    <hr class="border-gold/20">
+                    <p class="text-gold text-sm font-semibold">Parent Information</p>
+                    <div>
+                        <label class="block text-gold text-xs uppercase mb-1">Parent Name</label>
+                        <input type="text" id="parent-name" required class="w-full bg-white/5 border border-gold/30 p-3 rounded text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gold text-xs uppercase mb-1">Parent Email</label>
+                        <input type="email" id="parent-email" required class="w-full bg-white/5 border border-gold/30 p-3 rounded text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gold text-xs uppercase mb-1">Parent Phone</label>
+                        <input type="tel" id="parent-phone" required class="w-full bg-white/5 border border-gold/30 p-3 rounded text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gold text-xs uppercase mb-1">Create Parent Password</label>
+                        <input type="password" id="parent-password" required minlength="6" class="w-full bg-white/5 border border-gold/30 p-3 rounded text-white">
+                    </div>
+                </div>
+                <button type="submit" class="w-full mt-6 py-3 bg-gold text-black font-bold uppercase rounded">Add Student & Create Parent Portal</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Auth Check
+        auth.onAuthStateChange(async (event, session) => {
+            if (!session) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            const user = await db.getUserProfile(session.user.id);
+            
+            if (user.role !== 'admin') {
+                await auth.signOut();
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            document.getElementById('admin-name').textContent = user.name || 'Admin';
+            loadDashboardData();
+        });
+
+        function logout() {
+            auth.signOut().then(() => window.location.href = 'index.html');
+        }
+
+        // Navigation
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(sectionId).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            event.target.closest('.nav-item')?.classList.add('active');
+            
+            const titles = {
+                'dashboard': 'Admin Dashboard',
+                'teachers': 'Manage Teachers',
+                'students': 'Students & Parents',
+                'results': 'All Results',
+                'payments': 'Payment Management',
+                'reports': 'Teacher Reports'
+            };
+            document.getElementById('page-title').textContent = titles[sectionId];
+            
+            if (sectionId === 'teachers') loadTeachers();
+            if (sectionId === 'students') loadStudents();
+            if (sectionId === 'results') loadAllResults();
+            if (sectionId === 'payments') loadPayments();
+            if (sectionId === 'reports') loadReports();
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+
+        // Dashboard Data
+        async function loadDashboardData() {
+            const students = await db.getStudents();
+            const { data: teachers } = await supabase.from('users').select('*').eq('role', 'teacher');
+            const { data: parents } = await supabase.from('users').select('*').eq('role', 'parent');
+            
+            document.getElementById('total-students').textContent = students.length;
+            document.getElementById('total-teachers').textContent = teachers?.length || 0;
+            document.getElementById('total-parents').textContent = parents?.length || 0;
+            
+            // Calculate monthly revenue
+            const { data: payments } = await supabase
+                .from('payments')
+                .select('visible_total')
+                .eq('status', 'completed')
+                .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+            
+            const revenue = payments?.reduce((sum, p) => sum + (p.visible_total || 0), 0) || 0;
+            document.getElementById('monthly-revenue').textContent = '₦' + revenue.toLocaleString();
+        }
+
+        // Create Teacher
+        function showCreateTeacherModal() {
+            document.getElementById('create-teacher-modal').classList.remove('hidden');
+            document.getElementById('create-teacher-modal').classList.add('flex');
+        }
+
+        function hideCreateTeacherModal() {
+            document.getElementById('create-teacher-modal').classList.add('hidden');
+            document.getElementById('create-teacher-modal').classList.remove('flex');
+        }
+
+        async function handleCreateTeacher(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('teacher-name').value;
+            const email = document.getElementById('teacher-email').value;
+            const password = document.getElementById('teacher-password').value;
+            const assignedClass = document.getElementById('teacher-class').value;
+            const subjects = document.getElementById('teacher-subjects').value.split(',').map(s => s.trim());
+            
+            try {
+                const { user } = await auth.signUp(email, password, { name, role: 'teacher' });
+                
+                await db.createUserProfile({
+                    id: user.id,
+                    name,
+                    email,
+                    role: 'teacher',
+                    assigned_class: assignedClass,
+                    subjects,
+                    created_at: new Date().toISOString()
+                });
+                
+                alert('Teacher portal created successfully!');
+                hideCreateTeacherModal();
+                document.getElementById('create-teacher-form').reset();
+                loadTeachers();
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Load Teachers
+        async function loadTeachers() {
+            const { data: teachers } = await supabase.from('users').select('*').eq('role', 'teacher');
+            const tbody = document.getElementById('teachers-list');
+            tbody.innerHTML = '';
+            
+            teachers?.forEach(teacher => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-white/5';
+                tr.innerHTML = `
+                    <td class="p-4 text-white">${teacher.name}</td>
+                    <td class="p-4 text-gray-400">${teacher.email}</td>
+                    <td class="p-4"><span class="bg-gold/20 text-gold px-2 py-1 rounded text-xs">${teacher.assigned_class}</span></td>
+                    <td class="p-4 text-gray-400 text-sm">${teacher.subjects?.join(', ')}</td>
+                    <td class="p-4"><span class="text-green-400 text-xs">● Active</span></td>
+                    <td class="p-4">
+                        <button onclick="viewTeacherResults('${teacher.id}')" class="text-gold hover:text-white text-sm mr-2">View Results</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Create Student
+        function showCreateStudentModal() {
+            document.getElementById('create-student-modal').classList.remove('hidden');
+            document.getElementById('create-student-modal').classList.add('flex');
+        }
+
+        function hideCreateStudentModal() {
+            document.getElementById('create-student-modal').classList.add('hidden');
+            document.getElementById('create-student-modal').classList.remove('flex');
+        }
+
+        async function handleCreateStudent(e) {
+            e.preventDefault();
+            
+            const studentName = document.getElementById('student-name').value;
+            const studentClass = document.getElementById('student-class').value;
+            const parentName = document.getElementById('parent-name').value;
+            const parentEmail = document.getElementById('parent-email').value;
+            const parentPhone = document.getElementById('parent-phone').value;
+            const parentPassword = document.getElementById('parent-password').value;
+            
+            try {
+                const { user } = await auth.signUp(parentEmail, parentPassword, { name: parentName, role: 'parent' });
+                
+                const student = await db.createStudent({
+                    name: studentName,
+                    class: studentClass,
+                    parent_id: user.id,
+                    parent_name: parentName,
+                    parent_email: parentEmail,
+                    parent_phone: parentPhone,
+                    created_at: new Date().toISOString()
+                });
+                
+                await db.createUserProfile({
+                    id: user.id,
+                    name: parentName,
+                    email: parentEmail,
+                    phone: parentPhone,
+                    role: 'parent',
+                    children: [student.id],
+                    created_at: new Date().toISOString()
+                });
+                
+                alert('Student and parent portal created successfully!');
+                hideCreateStudentModal();
+                document.getElementById('create-student-form').reset();
+                loadStudents();
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Load Students
+        async function loadStudents() {
+            const students = await db.getStudents();
+            const tbody = document.getElementById('students-list');
+            tbody.innerHTML = '';
+            
+            students.forEach(student => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-white/5';
+                tr.innerHTML = `
+                    <td class="p-4 text-white">${student.name}</td>
+                    <td class="p-4"><span class="bg-gold/20 text-gold px-2 py-1 rounded text-xs">${student.class}</span></td>
+                    <td class="p-4 text-gray-400">${student.parent_name}</td>
+                    <td class="p-4 text-gray-400 text-sm">${student.parent_email}</td>
+                    <td class="p-4">
+                        <button onclick="viewStudentResults('${student.id}')" class="text-gold hover:text-white text-sm">View Results</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Load All Results
+        async function loadAllResults() {
+            const classFilter = document.getElementById('filter-class').value;
+            const termFilter = document.getElementById('filter-term').value;
+            
+            const results = await db.getResults({ class: classFilter, term: termFilter, year: new Date().getFullYear() });
+            const container = document.getElementById('all-results-container');
+            container.innerHTML = '';
+            
+            const byClass = {};
+            results.forEach(r => {
+                if (!byClass[r.class]) byClass[r.class] = [];
+                byClass[r.class].push(r);
+            });
+            
+            Object.entries(byClass).forEach(([className, classResults]) => {
+                const section = document.createElement('div');
+                section.className = 'card p-6 rounded-lg';
+                section.innerHTML = `
+                    <h4 class="font-playfair text-lg gold mb-4">${className} - ${termFilter}</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="border-b border-gold/20">
+                                <tr>
+                                    <th class="pb-2 text-gold">Student</th>
+                                    <th class="pb-2 text-gold">Teacher</th>
+                                    <th class="pb-2 text-gold">Average</th>
+                                    <th class="pb-2 text-gold">Grade</th>
+                                    <th class="pb-2 text-gold">Position</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gold/10">
+                                ${classResults.map(r => `
+                                    <tr>
+                                        <td class="py-2 text-white">${r.student_name}</td>
+                                        <td class="py-2 text-gray-400">${r.teacher_name}</td>
+                                        <td class="py-2 text-gold font-semibold">${r.average_score}%</td>
+                                        <td class="py-2"><span class="bg-gold/20 text-gold px-2 py-1 rounded text-xs">${r.grade}</span></td>
+                                        <td class="py-2 text-white">${r.position}${getSuffix(r.position)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                container.appendChild(section);
+            });
+        }
+
+        function getSuffix(n) {
+            if (n > 3 && n < 21) return 'th';
+            switch (n % 10) {
+                case 1: return 'st';
+                case 2: return 'nd';
+                case 3: return 'rd';
+                default: return 'th';
+            }
+        }
+
+        // Payment Management with Secret Fee
+        function calculateAdminBreakdown() {
+            const amount = parseFloat(document.getElementById('payment-amount').value) || 0;
+            const breakdown = document.getElementById('payment-breakdown');
+            
+            if (amount <= 0) {
+                breakdown.classList.add('hidden');
+                return;
+            }
+            
+            const calculation = PaymentProcessor.calculateVisibleBreakdown(amount);
+            const actual = PaymentProcessor.calculateActualSplit(amount);
+            
+            document.getElementById('breakdown-school').textContent = '₦' + calculation.schoolFee.toLocaleString();
+            document.getElementById('breakdown-paystack').textContent = '₦' + calculation.paystackCharge.toLocaleString();
+            document.getElementById('breakdown-total').textContent = '₦' + calculation.total.toLocaleString();
+            
+            // Hidden admin info
+            document.getElementById('breakdown-net').textContent = '₦' + actual.transfers.toSchool.toLocaleString();
+            document.getElementById('breakdown-secret').textContent = '₦' + actual.transfers.toSecretAccount.toLocaleString();
+            
+            breakdown.classList.remove('hidden');
+        }
+
+        async function createPayment() {
+            const studentId = document.getElementById('payment-student').value;
+            const amount = parseFloat(document.getElementById('payment-amount').value);
+            const type = document.getElementById('payment-type').value;
+            
+            if (!studentId || !amount || amount <= 0) {
+                alert('Please fill all fields with valid values');
+                return;
+            }
+            
+            const students = await db.getStudents();
+            const student = students.find(s => s.id === studentId);
+            
+            if (!student) {
+                alert('Student not found');
+                return;
+            }
+            
+            const invoice = AdminPaymentCreator.createPaymentInvoice(studentId, student.name, amount, type);
+            
+            try {
+                await db.createPayment({
+                    ...invoice,
+                    parent_id: student.parent_id,
+                    term: document.getElementById('filter-term')?.value || 'First Term'
+                });
+                
+                alert(`Payment invoice created!\n\nReference: ${invoice.reference}\nAmount: ₦${invoice.visible_total.toLocaleString()}\n\nParent will see this in their portal.`);
+                
+                loadPayments();
+                document.getElementById('payment-amount').value = '';
+                document.getElementById('payment-breakdown').classList.add('hidden');
+                
+            } catch (error) {
+                alert('Error creating payment: ' + error.message);
+            }
+        }
+
+        async function loadPayments() {
+            const { data: payments } = await supabase
+                .from('payments')
+                .select('*, students(name)')
+                .order('created_at', { ascending: false });
+            
+            const tbody = document.getElementById('payments-list');
+            tbody.innerHTML = '';
+            
+            payments?.forEach(payment => {
+                const tr = document.createElement('tr');
+                const isPaid = payment.status === 'completed';
+                
+                tr.innerHTML = `
+                    <td class="p-4 text-gray-400 text-sm">${new Date(payment.created_at).toLocaleDateString()}</td>
+                    <td class="p-4 text-white">${payment.student_name || payment.students?.name}</td>
+                    <td class="p-4 text-gray-400 capitalize">${payment.type}</td>
+                    <td class="p-4 text-gold">₦${(payment.visible_total || payment.school_fee).toLocaleString()}</td>
+                    <td class="p-4">
+                        <span class="${isPaid ? 'text-green-400' : 'text-yellow-400'} text-xs">
+                            ${isPaid ? '✓ Paid' : '⏳ Pending'}
+                        </span>
+                    </td>
+                    <td class="p-4">
+                        ${isPaid ? `
+                            <button onclick="viewReceipt('${payment.id}')" class="text-gold hover:text-white text-sm mr-2">View</button>
+                            <button onclick="downloadReceipt('${payment.id}')" class="text-gray-400 hover:text-white text-sm">Download</button>
+                        ` : '<span class="text-gray-600 text-sm">-</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // Populate student dropdown
+            const students = await db.getStudents();
+            const select = document.getElementById('payment-student');
+            select.innerHTML = '<option value="">Select Student</option>';
+            students.forEach(s => {
+                select.innerHTML += `<option value="${s.id}">${s.name} (${s.class})</option>`;
+            });
+        }
+
+        async function viewReceipt(paymentId) {
+            const { data: payment } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('id', paymentId)
+                .single();
+            
+            if (payment) {
+                ReceiptGenerator.showReceipt(payment);
+            }
+        }
+
+        async function downloadReceipt(paymentId) {
+            const { data: payment } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('id', paymentId)
+                .single();
+            
+            if (payment) {
+                await ReceiptGenerator.downloadReceipt(payment);
+            }
+        }
+
+        // Reports
+        async function loadReports() {
+            const { data: reports } = await supabase
+                .from('teacher_reports')
+                .select('*, users(name)')
+                .order('created_at', { ascending: false });
+            
+            const container = document.getElementById('teacher-reports-list');
+            container.innerHTML = '';
+            
+            reports?.forEach(report => {
+                const div = document.createElement('div');
+                div.className = 'card p-4 rounded-lg';
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="font-semibold text-white">${report.users?.name || 'Teacher'}</p>
+                            <p class="text-sm text-gray-400">${report.class} • ${new Date(report.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <span class="bg-gold/20 text-gold px-2 py-1 rounded text-xs">${report.type}</span>
+                    </div>
+                    <p class="text-gray-300 text-sm">${report.content}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function viewTeacherResults(teacherId) {
+            alert('View teacher results functionality - would open detailed view');
+        }
+
+        function viewStudentResults(studentId) {
+            alert('View student results - would open detailed transcript');
+        }
+    </script>
+</body>
+</html>
