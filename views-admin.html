@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal - Kateville School</title>
+  
+  <!-- Core CSS (immutable) -->
+  <link rel="stylesheet" href="/css/core.css">
+  <link rel="stylesheet" href="/css/components.css">
+  
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Supabase -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body class="min-h-screen bg-[#0A0F1E] text-white">
+  
+  <!-- Sidebar injected via JS from navigation.json -->
+  <aside id="sidebar" class="fixed w-64 h-full bg-[#050810] border-r border-gold/20 hidden md:block">
+    <!-- Populated by router.js -->
+  </aside>
+  
+  <!-- Main Content -->
+  <main id="app" class="md:ml-64 min-h-screen">
+    <!-- Sections loaded dynamically -->
+    <section id="dashboard" class="section active">...</section>
+    <section id="payments" class="section hidden">...</section>
+    <!-- Future modules inject here -->
+  </main>
+  
+  <!-- Core Scripts (NEVER MODIFY) -->
+  <script type="module">
+    import { supabase, ModuleSystem } from '/js/core/supabase.js'
+    import { Router } from '/js/core/router.js'
+    import { Permissions } from '/js/core/permissions.js'
+    
+    // Initialize
+    const router = new Router('admin')
+    await router.init()
+    
+    // Load enabled modules from config
+    const config = await fetch('/config/modules.json').then(r => r.json())
+    for (const [module, enabled] of Object.entries(config.optional)) {
+      if (enabled) await ModuleSystem.load(module)
+    }
+  </script>
+  
+  <!-- Portal-specific -->
+  <script type="module" src="/js/portals/admin.js"></script>
+</body>
+</html>

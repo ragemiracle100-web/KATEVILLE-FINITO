@@ -1,0 +1,4 @@
+git add .
+git commit -m "feat: add library system"
+git push origin main
+# Vercel auto-deploys, database migrates via Supabase CLI

@@ -1,0 +1,19 @@
+-- supabase/migrations/005_library_system.sql
+create table books (
+  id uuid default gen_random_uuid() primary key,
+  title text not null,
+  author text,
+  isbn text unique,
+  quantity integer default 1,
+  available integer default 1
+);
+
+create table borrowings (
+  id uuid default gen_random_uuid() primary key,
+  book_id uuid references books(id),
+  student_id uuid references students(id),
+  borrowed_at timestamp default now(),
+  due_date timestamp,
+  returned_at timestamp,
+  fine_amount integer default 0
+);

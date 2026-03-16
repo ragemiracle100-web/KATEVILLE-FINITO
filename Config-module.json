@@ -1,0 +1,20 @@
+{
+  "version": "1.0.0",
+  "core": {
+    "auth": true,
+    "payments": true,
+    "results": true,
+    "reports": true
+  },
+  "optional": {
+    "library": false,
+    "transport": false,
+    "cafeteria": false,
+    "hostel": false,
+    "alumni": false
+  },
+  "experimental": {
+    "ai_grading": false,
+    "parent_chat": false
+  }
+}
