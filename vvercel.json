@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/admin", "dest": "/admin.html" },
+    { "src": "/teacher", "dest": "/teacher.html" },
+    { "src": "/parent", "dest": "/parent.html" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
+
