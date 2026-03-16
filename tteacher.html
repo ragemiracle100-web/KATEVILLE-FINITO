@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Portal - Kateville School</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #0A0F1E; color: white; }
+        .font-playfair { font-family: 'Playfair Display', serif; }
+        .gold { color: #D4AF37; }
+        .bg-gold { background-color: #D4AF37; }
+        .border-gold { border-color: #D4AF37; }
+        .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(212,175,55,0.2); }
+        .input-field { background: rgba(255,255,255,0.05); border: 1px solid rgba(212,175,55,0.3); color: white; }
+        .input-field:focus { border-color: #D4AF37; outline: none; }
+        .grade-a { background: #22c55e; color: white; }
+        .grade-b { background: #3b82f6; color: white; }
+        .grade-c { background: #eab308; color: black; }
+        .grade-d { background: #f97316; color: white; }
+        .grade-f { background: #ef4444; color: white; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 bg-[#0A0F1E]/90 backdrop-blur-md border-b border-gold/20 py-4 px-6">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 border-2 border-gold rounded flex items-center justify-center">
+                    <span class="font-playfair text-gold font-bold text-lg">K</span>
+                </div>
+                <div>
+                    <h1 class="font-playfair text-white font-semibold tracking-wide text-sm">KATEVILLE</h1>
+                    <p class="text-gold text-[10px] tracking-widest uppercase">Teacher Portal</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="teacher-info" class="text-gold text-sm hidden sm:block"></span>
+                <button onclick="logout()" class="text-gray-400 hover:text-white text-sm">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="pt-24 pb-12 px-6 max-w-7xl mx-auto">
+        
+        <!-- Welcome Section -->
+        <div class="mb-8">
+            <h2 class="font-playfair text-3xl gold mb-2">Welcome, <span id="teacher-name">Teacher</span></h2>
+            <p class="text-gray-400">Class: <span id="assigned-class" class="text-gold">--</span> | Subjects: <span id="subjects-list" class="text-gold">--</span></p>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid md:grid-cols-4 gap-4 mb-8">
+            <div class="card p-4 rounded-lg text-center">
+                <p class="text-gray-400 text-xs uppercase mb-1">Students in Class</p>
+                <p id="student-count" class="font-playfair text-2xl gold font-bold">0</p>
+            </div>
+            <div class="card p-4 rounded-lg text-center">
+                <p class="text-gray-400 text-xs uppercase mb-1">Results Compiled</p>
+                <p id="results-count" class="font-playfair text-2xl gold font-bold">0</p>
+            </div>
+            <div class="card p-4 rounded-lg text-center">
+                <p class="text-gray-400 text-xs uppercase mb-1">Pending Reports</p>
+                <p id="pending-reports" class="font-playfair text-2xl gold font-bold">0</p>
+            </div>
+            <div class="card p-4 rounded-lg text-center">
+                <p class="text-gray-400 text-xs uppercase mb-1">Term</p>
+                <select id="current-term" onchange="changeTerm()" class="bg-transparent text-gold text-sm border-none outline-none cursor-pointer">
+                    <option value="First Term" class="bg-[#0A0F1E]">First Term</option>
+                    <option value="Second Term" class="bg-[#0A0F1E]">Second Term</option>
+                    <option value="Third Term" class="bg-[#0A0F1E]">Third Term</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="flex space-x-1 mb-6 border-b border-gold/20">
+            <button onclick="showTab('calculator')" id="tab-calculator" class="px-6 py-3 text-sm font-semibold border-b-2 border-gold text-gold">Result Calculator</button>
+            <button onclick="showTab('my-students')" id="tab-my-students" class="px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white">My Students</button>
+            <button onclick="showTab('compiled-results')" id="tab-compiled-results" class="px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white">Compiled Results</button>
+            <button onclick="showTab('reports')" id="tab-reports" class="px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white">Write Reports</button>
+        </div>
+
+        <!-- TAB 1: RESULT CALCULATOR -->
+        <section id="calculator" class="tab-content">
+            <div class="grid lg:grid-cols-3 gap-6">
+                
+                <!-- Student Selection & Score Input -->
+                <div class="lg:col-span-2 space-y-6">
+                    
+                    <!-- Select Student -->
+                    <div class="card p-6 rounded-lg">
+                        <h3 class="font-playfair text-lg gold mb-4">Step 1: Select Student</h3>
+                        <select id="calc-student" onchange="loadStudentForCalculation()" class="input-field w-full p-3 rounded">
+                            <option value="">-- Choose Student --</option>
+                        </select>
+                    </div>
+
+                    <!-- Score Input Form -->
+                    <div id="score-input-section" class="card p-6 rounded-lg hidden">
+                        <h3 class="font-playfair text-lg gold mb-4">Step 2: Input Scores</h3>
+                        
+                        <div class="grid md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gold text-xs uppercase mb-1">Subject</label>
+                                <select id="calc-subject" class="input-field w-full p-3 rounded">
+                                    <!-- Populated from teacher's subjects -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gold text-xs uppercase mb-1">Continuous Assessment (CA) - /40</label>
+                                <input type="number" id="score-ca" min="0" max="40" class="input-field w-full p-3 rounded" placeholder="0-40" oninput="calculateTotal()">
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gold text-xs uppercase mb-1">Mid-Term Test - /20</label>
+                                <input type="number" id="score-midterm" min="0" max="20" class="input-field w-full p-3 rounded" placeholder="0-20" oninput="calculateTotal()">
+                            </div>
+                            <div>
+                                <label class="block text-gold text-xs uppercase mb-1">Examination - /40</label>
+                                <input type="number" id="score-exam" min="0" max="40" class="input-field w-full p-3 rounded" placeholder="0-40" oninput="calculateTotal()">
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gold text-xs uppercase mb-1">Attendance - /10</label>
+                                <input type="number" id="score-attendance" min="0" max="10" class="input-field w-full p-3 rounded" placeholder="0-10" oninput="calculateTotal()">
+                            </div>
+                            <div>
+                                <label class="block text-gold text-xs uppercase mb-1">Participation - /10</label>
+                                <input type="number" id="score-participation" min="0" max="10" class="input-field w-full p-3 rounded" placeholder="0-10" oninput="calculateTotal()">
+                            </div>
+                            <div>
+                                <label class="block text-gold text-xs uppercase mb-1">Project - /20</label>
+                                <input type="number" id="score-project" min="0" max="20" class="input-field w-full p-3 rounded" placeholder="0-20" oninput="calculateTotal()">
+                            </div>
+                        </div>
+
+                        <button onclick="addSubjectScore()" class="w-full py-3 bg-gold/20 border border-gold text-gold font-semibold rounded hover:bg-gold hover:text-black transition">
+                            + Add Subject Score
+                        </button>
+                    </div>
+
+                    <!-- Added Subjects List -->
+                    <div id="subjects-added-section" class="card p-6 rounded-lg hidden">
+                        <h3 class="font-playfair text-lg gold mb-4">Subjects Added</h3>
+                        <div id="subjects-list-display" class="space-y-2 mb-4">
+                            <!-- Dynamically populated -->
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Live Calculator Display -->
+                <div class="lg:col-span-1">
+                    <div class="card p-6 rounded-lg sticky top-24">
+                        <h3 class="font-playfair text-lg gold mb-4 text-center">Live Calculation</h3>
+                        
+                        <div class="text-center mb-6">
+                            <p class="text-gray-400 text-sm mb-2">Total Score</p>
+                            <p id="live-total" class="font-playfair text-5xl gold font-bold">0</p>
+                            <p class="text-gray-400 text-sm mt-1">out of 100</p>
+                        </div>
+
+                        <div class="text-center mb-6">
+                            <p class="text-gray-400 text-sm mb-2">Grade</p>
+                            <p id="live-grade" class="inline-block px-6 py-2 rounded text-2xl font-bold grade-f">F</p>
+                        </div>
+
+                        <div class="space-y-2 text-sm mb-6">
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Percentage:</span>
+                                <span id="live-percentage" class="text-gold">0%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Remark:</span>
+                                <span id="live-remark" class="text-white">Fail</span>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-gold/20 pt-4 mb-4">
+                            <p class="text-gold text-xs uppercase mb-2">Grading Scale</p>
+                            <div class="space-y-1 text-xs">
+                                <div class="flex justify-between"><span class="grade-a px-2 py-1 rounded">A</span><span>70-100 (Excellent)</span></div>
+                                <div class="flex justify-between"><span class="grade-b px-2 py-1 rounded">B</span><span>60-69 (Good)</span></div>
+                                <div class="flex justify-between"><span class="grade-c px-2 py-1 rounded">C</span><span>50-59 (Average)</span></div>
+                                <div class="flex justify-between"><span class="grade-d px-2 py-1 rounded">D</span><span>45-49 (Pass)</span></div>
+                                <div class="flex justify-between"><span class="grade-f px-2 py-1 rounded">F</span><span>0-44 (Fail)</span></div>
+                            </div>
+                        </div>
+
+                        <button onclick="saveResult()" id="save-result-btn" class="w-full py-3 bg-gold text-black font-bold uppercase rounded disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            Save Result
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- TAB 2: MY STUDENTS -->
+        <section id="my-students" class="tab-content hidden">
+            <h3 class="font-playfair text-2xl gold mb-6">Students in My Class</h3>
+            <div class="card rounded-lg overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-gold/10 border-b border-gold/30">
+                        <tr>
+                            <th class="p-4 text-gold text-sm">S/N</th>
+                            <th class="p-4 text-gold text-sm">Student Name</th>
+                            <th class="p-4 text-gold text-sm">Parent Contact</th>
+                            <th class="p-4 text-gold text-sm">Results Status</th>
+                            <th class="p-4 text-gold text-sm">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="my-students-list" class="divide-y divide-gold/10">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB 3: COMPILED RESULTS -->
+        <section id="compiled-results" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-playfair text-2xl gold">My Compiled Results</h3>
+                <select id="results-term-filter" onchange="loadCompiledResults()" class="input-field p-2 rounded text-sm">
+                    <option value="First Term">First Term</option>
+                    <option value="Second Term">Second Term</option>
+                    <option value="Third Term">Third Term</option>
+                </select>
+            </div>
+            <div id="compiled-results-container" class="space-y-4">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- TAB 4: WRITE REPORTS -->
+        <section id="reports" class="tab-content hidden">
+            <div class="grid lg:grid-cols-2 gap-6">
+                <div class="card p-6 rounded-lg">
+                    <h3 class="font-playfair text-lg gold mb-4">Write Student Report</h3>
+                    
+                    <select id="report-student" class="input-field w-full p-3 rounded mb-4">
+                        <option value="">Select Student</option>
+                    </select>
+
+                    <select id="report-type" class="input-field w-full p-3 rounded mb-4">
+                        <option value="weekly">Weekly Assessment</option>
+                        <option value="term">Term Report</option>
+                        <option value="behavior">Behavioral Observation</option>
+                        <option value="recommendation">Recommendation</option>
+                    </select>
+
+                    <textarea id="report-content" rows="6" class="input-field w-full p-3 rounded mb-4" placeholder="Write your detailed report here..."></textarea>
+
+                    <button onclick="submitReport()" class="w-full py-3 bg-gold text-black font-bold uppercase rounded">
+                        Submit Report
+                    </button>
+                </div>
+
+                <div class="card p-6 rounded-lg">
+                    <h3 class="font-playfair text-lg gold mb-4">My Recent Reports</h3>
+                    <div id="my-reports-list" class="space-y-3 max-h-96 overflow-y-auto">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Global State
+        let currentTeacher = null;
+        let currentClass = null;
+        let teacherSubjects = [];
+        let studentScores = [];
+        let selectedStudent = null;
+
+        // Auth Check
+        auth.onAuthStateChange(async (event, session) => {
+            if (!session) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            const user = await db.getUserProfile(session.user.id);
+
+            if (user.role !== 'teacher') {
+                await auth.signOut();
+                window.location.href = 'index.html';
+                return;
+            }
+
+            currentTeacher = user;
+            currentClass = user.assigned_class;
+            teacherSubjects = user.subjects || [];
+
+            document.getElementById('teacher-name').textContent = user.name;
+            document.getElementById('teacher-info').textContent = `${user.name} | ${user.assigned_class}`;
+            document.getElementById('assigned-class').textContent = user.assigned_class;
+            document.getElementById('subjects-list').textContent = teacherSubjects.join(', ');
+
+            // Populate subject dropdown
+            const subjectSelect = document.getElementById('calc-subject');
+            subjectSelect.innerHTML = teacherSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
+
+            loadTeacherData();
+        });
+
+        function logout() {
+            auth.signOut().then(() => window.location.href = 'index.html');
+        }
+
+        // Tab Navigation
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.querySelectorAll('[id^="tab-"]').forEach(t => {
+                t.classList.remove('border-gold', 'text-gold');
+                t.classList.add('border-transparent', 'text-gray-400');
+            });
+
+            document.getElementById(tabId).classList.remove('hidden');
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            activeTab.classList.remove('border-transparent', 'text-gray-400');
+            activeTab.classList.add('border-gold', 'text-gold');
+
+            if (tabId === 'my-students') loadMyStudents();
+            if (tabId === 'compiled-results') loadCompiledResults();
+            if (tabId === 'reports') loadMyReports();
+        }
+
+        // Load Teacher Dashboard Data
+        async function loadTeacherData() {
+            const students = await db.getStudents({ class: currentClass });
+            document.getElementById('student-count').textContent = students.length;
+
+            const calcSelect = document.getElementById('calc-student');
+            const reportSelect = document.getElementById('report-student');
+            
+            calcSelect.innerHTML = '<option value="">-- Choose Student --</option>';
+            reportSelect.innerHTML = '<option value="">Select Student</option>';
+
+            students.forEach(s => {
+                const option = `<option value="${s.id}">${s.name}</option>`;
+                calcSelect.innerHTML += option;
+                reportSelect.innerHTML += option;
+            });
+
+            const term = document.getElementById('current-term').value;
+            const results = await db.getResults({ class: currentClass, term, year: new Date().getFullYear() });
+            document.getElementById('results-count').textContent = results.length;
+        }
+
+        function changeTerm() {
+            loadTeacherData();
+        }
+
+        // Result Calculator
+        function loadStudentForCalculation() {
+            const studentId = document.getElementById('calc-student').value;
+            if (!studentId) {
+                document.getElementById('score-input-section').classList.add('hidden');
+                return;
+            }
+
+            selectedStudent = studentId;
+            document.getElementById('score-input-section').classList.remove('hidden');
+            document.getElementById('subjects-added-section').classList.remove('hidden');
+            
+            studentScores = [];
+            updateSubjectsDisplay();
+            resetCalculator();
+        }
+
+        function calculateTotal() {
+            const ca = parseFloat(document.getElementById('score-ca').value) || 0;
+            const midterm = parseFloat(document.getElementById('score-midterm').value) || 0;
+            const exam = parseFloat(document.getElementById('score-exam').value) || 0;
+            const attendance = parseFloat(document.getElementById('score-attendance').value) || 0;
+            const participation = parseFloat(document.getElementById('score-participation').value) || 0;
+            const project = parseFloat(document.getElementById('score-project').value) || 0;
+
+            const total = Math.min(100, Math.round(ca + midterm + exam + (attendance * 0.5) + (participation * 0.5) + (project * 0.5)));
+            
+            updateLiveDisplay(total);
+            return total;
+        }
+
+        function updateLiveDisplay(total) {
+            document.getElementById('live-total').textContent = total;
+            document.getElementById('live-percentage').textContent = total + '%';
+
+            let grade, remark, gradeClass;
+            
+            if (total >= 70) {
+                grade = 'A'; remark = 'Excellent'; gradeClass = 'grade-a';
+            } else if (total >= 60) {
+                grade = 'B'; remark = 'Good'; gradeClass = 'grade-b';
+            } else if (total >= 50) {
+                grade = 'C'; remark = 'Average'; gradeClass = 'grade-c';
+            } else if (total >= 45) {
+                grade = 'D'; remark = 'Pass'; gradeClass = 'grade-d';
+            } else {
+                grade = 'F'; remark = 'Fail'; gradeClass = 'grade-f';
+            }
+
+            const gradeEl = document.getElementById('live-grade');
+            gradeEl.textContent = grade;
+            gradeEl.className = `inline-block px-6 py-2 rounded text-2xl font-bold ${gradeClass}`;
+            document.getElementById('live-remark').textContent = remark;
+        }
+
+        function addSubjectScore() {
+            const subject = document.getElementById('calc-subject').value;
+            const total = calculateTotal();
+
+            if (!selectedStudent) {
+                alert('Please select a student first');
+                return;
+            }
+
+            const existingIndex = studentScores.findIndex(s => s.subject === subject);
+            if (existingIndex >= 0) {
+                studentScores[existingIndex] = { subject, score: total };
+            } else {
+                studentScores.push({ subject, score: total });
+            }
+
+            updateSubjectsDisplay();
+            
+            document.querySelectorAll('#score-input-section input').forEach(i => i.value = '');
+            resetCalculator();
+            
+            document.getElementById('save-result-btn').disabled = studentScores.length === 0;
+        }
+
+        function updateSubjectsDisplay() {
+            const container = document.getElementById('subjects-list-display');
+            
+            if (studentScores.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">No subjects added yet. Add at least one subject to save.</p>';
+                return;
+            }
+
+            container.innerHTML = studentScores.map((s, index) => {
+                let gradeClass = s.score >= 70 ? 'grade-a' : s.score >= 60 ? 'grade-b' : s.score >= 50 ? 'grade-c' : s.score >= 45 ? 'grade-d' : 'grade-f';
+                return `
+                    <div class="flex justify-between items-center bg-white/5 p-3 rounded">
+                        <div>
+                            <span class="text-white font-semibold">${s.subject}</span>
+                            <span class="text-gray-400 text-sm ml-2">${s.score}/100</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="${gradeClass} px-2 py-1 rounded text-xs font-bold">${s.score >= 70 ? 'A' : s.score >= 60 ? 'B' : s.score >= 50 ? 'C' : s.score >= 45 ? 'D' : 'F'}</span>
+                            <button onclick="removeSubject(${index})" class="text-red-400 hover:text-red-300 text-sm">×</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function removeSubject(index) {
+            studentScores.splice(index, 1);
+            updateSubjectsDisplay();
+            document.getElementById('save-result-btn').disabled = studentScores.length === 0;
+        }
+
+        function resetCalculator() {
+            document.getElementById('live-total').textContent = '0';
+            document.getElementById('live-percentage').textContent = '0%';
+            document.getElementById('live-grade').textContent = 'F';
+            document.getElementById('live-grade').className = 'inline-block px-6 py-2 rounded text-2xl font-bold grade-f';
+            document.getElementById('live-remark').textContent = 'Fail';
+        }
+
+        async function saveResult() {
+            if (!selectedStudent || studentScores.length === 0) {
+                alert('Please select a student and add at least one subject');
+                return;
+            }
+
+            const term = document.getElementById('current-term').value;
+            const students = await db.getStudents({ class: currentClass });
+            const student = students.find(s => s.id === selectedStudent);
+
+            const totalScore = studentScores.reduce((sum, s) => sum + s.score, 0);
+            const average = Math.round(totalScore / studentScores.length);
+            const overallGrade = average >= 70 ? 'A' : average >= 60 ? 'B' : average >= 50 ? 'C' : average >= 45 ? 'D' : 'F';
+
+            const resultData = {
+                student_id: selectedStudent,
+                student_name: student.name,
+                class: currentClass,
+                term: term,
+                academic_year: new Date().getFullYear(),
+                teacher_id: currentTeacher.id,
+                teacher_name: currentTeacher.name,
+                subjects: studentScores,
+                total_score: totalScore,
+                average_score: average,
+                grade: overallGrade,
+                number_of_subjects: studentScores.length,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            try {
+                await db.saveResult(resultData);
+                await calculatePosition(selectedStudent, currentClass, term, resultData.academic_year);
+
+                alert('Result saved successfully!');
+                
+                studentScores = [];
+                selectedStudent = null;
+                document.getElementById('calc-student').value = '';
+                document.getElementById('score-input-section').classList.add('hidden');
+                document.getElementById('subjects-added-section').classList.add('hidden');
+                updateSubjectsDisplay();
+                document.getElementById('save-result-btn').disabled = true;
+                
+                loadTeacherData();
+
+            } catch (error) {
+                alert('Error saving result: ' + error.message);
+            }
+        }
+
+        async function calculatePosition(studentId, className, term, year) {
+            const allResults = await db.getResults({ class: className, term, year });
+            allResults.sort((a, b) => b.average_score - a.average_score);
+
+            for (let i = 0; i < allResults.length; i++) {
+                await supabase.from('results').update({ position: i + 1 }).eq('id', allResults[i].id);
+            }
+        }
+
+        // Load My Students
+        async function loadMyStudents() {
+            const students = await db.getStudents({ class: currentClass });
+            const tbody = document.getElementById('my-students-list');
+            tbody.innerHTML = '';
+
+            let index = 1;
+            for (const student of students) {
+                const term = document.getElementById('current-term').value;
+                const results = await db.getResults({ studentId: student.id, term, year: new Date().getFullYear() });
+                const hasResult = results.length > 0;
+                const resultData = hasResult ? results[0] : null;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-white/5';
+                tr.innerHTML = `
+                    <td class="p-4 text-gray-400">${index}</td>
+                    <td class="p-4 text-white font-semibold">${student.name}</td>
+                    <td class="p-4 text-gray-400">${student.parent_phone || 'N/A'}</td>
+                    <td class="p-4">
+                        ${hasResult 
+                            ? `<span class="bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs">✓ Compiled (Avg: ${resultData.average_score})</span>`
+                            : `<span class="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded text-xs">Pending</span>`
+                        }
+                    </td>
+                    <td class="p-4">
+                        <button onclick="quickResult('${student.id}')" class="text-gold hover:text-white text-sm mr-2">Add Result</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+                index++;
+            }
+        }
+
+        function quickResult(studentId) {
+            showTab('calculator');
+            document.getElementById('calc-student').value = studentId;
+            loadStudentForCalculation();
+        }
+
+        // Load Compiled Results
+        async function loadCompiledResults() {
+            const term = document.getElementById('results-term-filter').value;
+            const results = await db.getResults({ class: currentClass, term, year: new Date().getFullYear() });
+            
+            const container = document.getElementById('compiled-results-container');
+            
+            if (results.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">No results compiled for this term yet.</p>';
+                return;
+            }
+
+            container.innerHTML = results.sort((a, b) => a.position - b.position).map(r => `
+                <div class="card p-4 rounded-lg">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <p class="font-semibold text-white text-lg">${r.position}${getSuffix(r.position)} Position - ${r.student_name}</p>
+                            <p class="text-gray-400 text-sm">${r.number_of_subjects} Subjects • Average: ${r.average_score}%</p>
+                        </div>
+                        <span class="${r.grade >= 'C' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} px-3 py-1 rounded font-bold">
+                            Grade ${r.grade}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                        ${r.subjects.map(s => `
+                            <div class="bg-white/5 p-2 rounded">
+                                <span class="text-gray-400">${s.subject}:</span>
+                                <span class="text-gold ml-1">${s.score}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getSuffix(n) {
+            if (n > 3 && n < 21) return 'th';
+            switch (n % 10) {
+                case 1: return 'st';
+                case 2: return 'nd';
+                case 3: return 'rd';
+                default: return 'th';
+            }
+        }
+
+        // Reports
+        async function submitReport() {
+            const studentId = document.getElementById('report-student').value;
+            const type = document.getElementById('report-type').value;
+            const content = document.getElementById('report-content').value;
+
+            if (!studentId || !content.trim()) {
+                alert('Please select a student and write a report');
+                return;
+            }
+
+            const students = await db.getStudents({ class: currentClass });
+            const student = students.find(s => s.id === studentId);
+
+            await db.createReport({
+                teacher_id: currentTeacher.id,
+                teacher_name: currentTeacher.name,
+                student_id: studentId,
+                student_name: student.name,
+                class: currentClass,
+                type: type,
+                content: content,
+                term: document.getElementById('current-term').value,
+                created_at: new Date().toISOString(),
+                read_by_parent: false
+            });
+
+            alert('Report submitted successfully!');
+            document.getElementById('report-content').value = '';
+            loadMyReports();
+        }
+
+        async function loadMyReports() {
+            const reports = await db.getTeacherReports({ teacherId: currentTeacher.id });
+            const container = document.getElementById('my-reports-list');
+            
+            if (reports.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">No reports submitted yet.</p>';
+                return;
+            }
+
+            const typeLabels = {
+                weekly: 'Weekly Assessment',
+                term: 'Term Report',
+                behavior: 'Behavioral Observation',
+                recommendation: 'Recommendation'
+            };
+
+            container.innerHTML = reports.slice(0, 10).map(r => `
+                <div class="bg-white/5 p-3 rounded border-l-2 ${r.read_by_parent ? 'border-green-500' : 'border-gold'}">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-white font-semibold text-sm">${r.student_name}</span>
+                        <span class="text-gold text-xs">${typeLabels[r.type]}</span>
+                    </div>
+                    <p class="text-gray-400 text-xs mb-1">${new Date(r.created_at).toLocaleDateString()}</p>
+                    <p class="text-gray-300 text-sm line-clamp-2">${r.content}</p>
+                    ${r.read_by_parent ? '<span class="text-green-400 text-xs mt-1 block">✓ Seen by parent</span>' : ''}
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

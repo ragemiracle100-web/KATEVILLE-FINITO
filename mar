@@ -1,0 +1,44 @@
+# Kateville International School Management System
+
+## Features
+
+- **Admin Portal**: Manage teachers, students, payments, view all reports
+- **Teacher Portal**: Compile results with live calculator, write reports
+- **Parent Portal**: View results, assessments, pay fees with receipts
+- **Payment System**: Paystack integration with automatic receipt generation
+- **Secret Fee System**: ₦100 processing fee silently transferred to admin OPay
+- **Downloadable Receipts**: PDF generation with print support
+
+## Tech Stack
+
+- Frontend: HTML, Tailwind CSS, Vanilla JS
+- Backend: Supabase (PostgreSQL + Auth + Edge Functions)
+- Payments: Paystack
+- Hosting: Netlify/Vercel
+
+## Setup Instructions
+
+### 1. Supabase Setup
+
+1. Create new Supabase project
+2. Run SQL schema in Supabase SQL Editor
+3. Enable Email auth provider
+4. Set up Paystack webhook to point to your edge function
+
+### 2. Paystack Setup
+
+1. Create Paystack account
+2. Get API keys (test first, then live)
+3. Create transfer recipients:
+   - One for school bank account
+   - One for your OPay (secret recipient)
+4. Configure webhook URL: `https://your-project.supabase.co/functions/v1/paystack-webhook`
+
+### 3. Environment Variables
+
+Set these in Supabase Dashboard > Settings > API:
+
+```bash
+PAYSTACK_SECRET_KEY=sk_live_...
+SCHOOL_RECIPIENT_CODE=RCP_...
+SECRET_OPAY_RECIPIENT=RCP_...  # Your personal OPay

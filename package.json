@@ -1,0 +1,17 @@
+{
+  "name": "kateville-school",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod",
+    "db:migrate": "supabase db push",
+    "db:reset": "supabase db reset"
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}

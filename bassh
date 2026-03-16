@@ -1,0 +1,5 @@
+# Deploy to Netlify
+netlify deploy --prod
+
+# Or to Vercel
+vercel --prod

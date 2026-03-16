@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "name": "kateville-school",
+  
+  "builds": [
+    { "src": "api/**/*.js", "use": "@vercel/node" },
+    { "src": "public/**/*", "use": "@vercel/static" }
+  ],
+  
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/admin", "dest": "/views/admin.html" },
+    { "src": "/teacher", "dest": "/views/teacher.html" },
+    { "src": "/parent", "dest": "/views/parent.html" },
+    { "src": "/receipt/(.*)", "dest": "/api/payments/receipt?id=$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/views/index.html" }
+  ],
+  
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS" }
+      ]
+    },
+    {
+      "source": "/js/core/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ],
+  
+  "env": {
+    "SUPABASE_URL": "@supabase_url",
+    "SUPABASE_ANON_KEY": "@supabase_anon_key",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+    "PAYSTACK_SECRET_KEY": "@paystack_secret_key",
+    "SECRET_OPAY_RECIPIENT": "@secret_opay_recipient"
+  }
+}

